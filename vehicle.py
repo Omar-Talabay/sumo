@@ -33,7 +33,7 @@ def start_tcp_server():
     print 'tcp server has started'
     
     TCP_IP = '127.0.0.1'
-    TCP_PORT = 6667
+    TCP_PORT = 6666
     
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,7 +42,7 @@ def start_tcp_server():
     s.bind((TCP_IP, TCP_PORT))
     s.listen(10)
     
-    
+    counter = 0
     while True:
         
         
@@ -52,10 +52,12 @@ def start_tcp_server():
         
         car_id = conn.recv(BUFFER_SIZE)
         car_id = struct.unpack(b'>i', car_id)[0]
-        print car_id
+        #print car_id
         
-        vehicle = Vehicle(car_id, conn, ip[0])
+        vehicle = Vehicle(counter, conn, ip[0])
         vehicles_list.append(vehicle)
+        
+        counter +=1
         
         thread.start_new_thread(handle_received_msgs, (vehicle,))
         
@@ -65,18 +67,18 @@ def broadcast_local_info(vehicle_ids, positions, angles, speeds):
     for vehicle in vehicles_list:
         for v_id, pos, angle, speed in zip(vehicle_ids, positions, angles, speeds):
             # to ensure a vehicle doesn't send to itself
-            #if vehicle.v_id != v_id or True:
-            x,y = pos
-            x = int(x*10000000)
-            y = int(y*10000000)
-            
-            angle = int(angle*math.pi/180)
-            speed = int(speed)
-            
-            msg = struct.pack(b'>6i', msg_types.LOCAL_INFO, v_id, x, y, angle, speed)
-            
-            vehicle.conn.send(msg)
-            print vehicle.v_id
+            if vehicle.v_id == v_id:
+                x,y = pos
+                x = int(x*10000000)
+                y = int(y*10000000)
+                
+                angle = int(angle*math.pi/180)
+                speed = int(speed)
+                
+                msg = struct.pack(b'>6i', msg_types.LOCAL_INFO, v_id, x, y, angle, speed)
+                
+                vehicle.conn.send(msg)
+                #print vehicle.v_id
             
 
 
@@ -136,13 +138,17 @@ def handle_received_msgs(vehicle):
         for msg in raw_msg.split('\\r'):
             if len(msg)/4 != 0 or len(msg) == 0:
                 continue
-            msg = struct.unpack(b'>'+str(len(msg)/4)+'i', msg)
+            msg = list(struct.unpack(b'>'+str(len(msg)/4)+'i', msg))
             msg_type = msg[0]
             
             if msg_type == msg_types.LSM or msg_type == msg_types.TLS or \
             msg_type == msg_types.PM or msg_types.DANGER:
+                
                 if msg_type != msg_types.PM:
-                    msg = msg+tuple([vehicle.v_id])
+                    
+                    idx = 2 if msg_type == msg_types.TLS else 1
+                    
+                    msg.insert(idx, vehicle.v_id)
                     
                 append_del_read_msg_pool([vehicle.v_id, msg], 'append')
                     
@@ -153,10 +159,11 @@ def handle_received_msgs(vehicle):
                 append_del_read_msg_pool([vehicle.v_id, msg], 'del')
         
             
-        
+    
+import time    
 def start_sumo_server():
     print 'sumo server has started'
-    sumoCmd = ['sumo', '-c', 'sumoTestCode.sumocfg', '--step-length', '0.25']
+    sumoCmd = ['sumo-gui', '-c', 'sumoTestCode.sumocfg', '--step-length', '0.25']
     traci.start(sumoCmd)
     while True:
         traci.simulationStep()
@@ -184,9 +191,11 @@ def start_sumo_server():
         
             broadcast_local_info(vehicles_capable, positions, angles, speeds)
             
-            #handle_received_msgs()
+            handle_received_msgs()
             
-            #broadcast_specialized_msgs()
+            broadcast_specialized_msgs()
+            
+        time.sleep(.5)
       
         
         
