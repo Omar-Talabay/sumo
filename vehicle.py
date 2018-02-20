@@ -126,30 +126,31 @@ def del_from_msg_pool(msg):
 
 def handle_received_msgs(vehicle):
     
-    raw_msg = vehicle.conn.recv(BUFFER_SIZE)
-    
-    if raw_msg is None:
-        return
-    
-    # multiple messages can be sent by a vehicle
-    for msg in raw_msg.split('\\r'):
-        if len(msg)/4 != 0 or len(msg) == 0:
-            continue
-        msg = struct.unpack(b'>'+str(len(msg)/4)+'i', msg)
-        msg_type = msg[0]
+    while True:
+        raw_msg = vehicle.conn.recv(BUFFER_SIZE)
         
-        if msg_type == msg_types.LSM or msg_type == msg_types.TLS or \
-        msg_type == msg_types.PM or msg_types.DANGER:
-            if msg_type != msg_types.PM:
-                msg = msg+tuple([vehicle.v_id])
-                
-            append_del_read_msg_pool([vehicle.v_id, msg], 'append')
-                
-        elif msg_type == msg_types.STOP_DANGER or \
-        msg_type == msg_types.TLS_STOP or \
-        msg_type == msg_types.PM_STOP:
+        if raw_msg is None:
+            return
+        
+        # multiple messages can be sent by a vehicle
+        for msg in raw_msg.split('\\r'):
+            if len(msg)/4 != 0 or len(msg) == 0:
+                continue
+            msg = struct.unpack(b'>'+str(len(msg)/4)+'i', msg)
+            msg_type = msg[0]
             
-            append_del_read_msg_pool([vehicle.v_id, msg], 'del')
+            if msg_type == msg_types.LSM or msg_type == msg_types.TLS or \
+            msg_type == msg_types.PM or msg_types.DANGER:
+                if msg_type != msg_types.PM:
+                    msg = msg+tuple([vehicle.v_id])
+                    
+                append_del_read_msg_pool([vehicle.v_id, msg], 'append')
+                    
+            elif msg_type == msg_types.STOP_DANGER or \
+            msg_type == msg_types.TLS_STOP or \
+            msg_type == msg_types.PM_STOP:
+                
+                append_del_read_msg_pool([vehicle.v_id, msg], 'del')
         
             
         
