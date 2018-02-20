@@ -50,8 +50,8 @@ def start_tcp_server():
         
         print str(ip[0])+' has joined'
         
-        car_id = conn.recv(BUFFER_SIZE)
-        car_id = struct.unpack(b'>i', car_id)[0]
+        #car_id = conn.recv(BUFFER_SIZE)
+        #car_id = struct.unpack(b'>i', car_id)[0]
         #print car_id
         
         vehicle = Vehicle(counter, conn, ip[0])
@@ -67,18 +67,18 @@ def broadcast_local_info(vehicle_ids, positions, angles, speeds):
     for vehicle in vehicles_list:
         for v_id, pos, angle, speed in zip(vehicle_ids, positions, angles, speeds):
             # to ensure a vehicle doesn't send to itself
-            if vehicle.v_id == v_id:
-                x,y = pos
-                x = int(x*10000000)
-                y = int(y*10000000)
-                
-                angle = int(angle*math.pi/180)
-                speed = int(speed)
-                
-                msg = struct.pack(b'>6i', msg_types.LOCAL_INFO, v_id, x, y, angle, speed)
-                
-                vehicle.conn.send(msg)
-                #print vehicle.v_id
+            #if vehicle.v_id == v_id:
+            x,y = pos
+            x = int(x*10000000)
+            y = int(y*10000000)
+            
+            angle = int(angle*math.pi/180)
+            speed = int(speed)
+            
+            msg = struct.pack(b'>6i', msg_types.LOCAL_INFO, v_id, x, y, angle, speed)
+            
+            vehicle.conn.send(msg)
+            print vehicle.v_id,vehicle.conn
             
 
 
@@ -191,11 +191,11 @@ def start_sumo_server():
         
             broadcast_local_info(vehicles_capable, positions, angles, speeds)
             
-            handle_received_msgs()
+            #handle_received_msgs()
             
             broadcast_specialized_msgs()
             
-        time.sleep(.5)
+        #time.sleep(.5)
       
         
         
